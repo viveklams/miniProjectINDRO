@@ -1,0 +1,377 @@
+<html>
+<head>
+    <title>User Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #444;
+            margin-top: 30px;
+        }
+        #create-user-form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        #create-user-form input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        #create-user-form button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        #create-user-form button:hover {
+            background-color: #45a049;
+        }
+        #user-list {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .user-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+        .user-item:hover {
+            background-color: #f8f9fa;
+        }
+        .user-item:last-child {
+            border-bottom: none;
+        }
+        .user-info {
+            flex-grow: 1;
+        }
+        .user-info span {
+            display: block;
+            margin: 5px 0;
+            color: #555;
+        }
+        .user-info .user-id {
+            color: #777;
+            font-size: 0.9em;
+        }
+        .user-info .user-username {
+            font-weight: bold;
+            color: #333;
+        }
+        .user-info .user-name {
+            font-style: italic;
+        }
+        .user-info .user-email {
+            color: #0066cc;
+        }
+        .user-item button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .edit-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+        .edit-btn:hover {
+            background-color: #0b7dda;
+        }
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        .delete-btn:hover {
+            background-color: #da190b;
+        }
+        #edit-user-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+        #edit-user-form input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #edit-user-form button {
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #edit-user-form .save-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+        #edit-user-form .cancel-btn {
+            background-color: #9E9E9E;
+            color: white;
+        }
+        #message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #message.show {
+            display: block;
+            opacity: 1;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .user-item.new-user {
+            background-color: #cce5ff;
+            border-left: 4px solid #004085;
+            animation: fadeOutHighlight 3s ease 2s forwards;
+        }
+        @keyframes fadeOutHighlight {
+            to {
+                background-color: #fff;
+                border-left: none;
+            }
+        }
+    </style>
+</head>
+<body>
+<h1>User Management</h1>
+<div id="message"></div>
+<div id="user-list"></div>
+
+<h2>Create New User</h2>
+<form id="create-user-form">
+    Username: <input type="text" name="username" required>
+    Name: <input type="text" name="name" required>
+    Email: <input type="email" name="email" required>
+    <button type="submit">Create User</button>
+</form>
+
+<script>
+    function showMessage(text, isError = false) {
+        const msgDiv = document.getElementById('message');
+        msgDiv.textContent = text;
+        msgDiv.className = isError ? 'error' : 'success';
+        msgDiv.classList.add('show');
+        setTimeout(() => {
+            msgDiv.classList.remove('show');
+            setTimeout(() => msgDiv.textContent = '', 300);
+        }, 3000);
+    }
+
+    async function fetchUsers() {
+        try {
+            const response = await fetch('/users');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => {
+                    throw new Error('Failed to fetch users');
+                });
+                throw new Error(errorData.message || 'Failed to fetch users');
+            }
+            const data = await response.json();
+
+            const userListDiv = document.getElementById('user-list');
+            userListDiv.innerHTML = '';
+
+            data.forEach(user => {
+                const div = document.createElement('div');
+                div.className = 'user-item';
+                div.id = 'user-' + user.id;
+                div.innerHTML = `
+                    <div class="user-info">
+                        <span class="user-id">ID: ${user.id}</span>
+                        <span class="user-username">Username: ${user.username}</span>
+                        <span class="user-name">Name: ${user.name}</span>
+                        <span class="user-email">Email: ${user.email}</span>
+                    </div>
+                `;
+
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.className = 'edit-btn';
+                editButton.addEventListener('click', () => editUser(user.id));
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'delete-btn';
+                deleteButton.addEventListener('click', () => deleteUser(user.id));
+
+                div.append(editButton, deleteButton);
+                userListDiv.appendChild(div);
+            });
+        } catch (error) {
+            showMessage(error.message || 'Failed to fetch users', true);
+        }
+    }
+
+    async function createUser(event) {
+        event.preventDefault();
+        try {
+            const form = event.target;
+            const user = {
+                username: form.elements.username.value,
+                name: form.elements.name.value,
+                email: form.elements.email.value
+            };
+
+            const response = await fetch('/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(user)
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => {
+                    throw new Error('Username or Name or Email already exists');
+                });
+                const errorMessage = typeof data.message === 'string' ? data.message : 'Username or Name or Email already exists';
+                if (errorMessage.includes("Username already exists") ||
+                    errorMessage.includes("Email already exists") ||
+                    errorMessage.includes("Name already exists")) {
+                    throw new Error('Username or Name or Email already exists');
+                } else {
+                    throw new Error(errorMessage);
+                }
+            }
+
+            form.reset();
+            showMessage('User created successfully');
+            await fetchUsers();
+            const newUser = await response.json();
+            const newUserDiv = document.getElementById(`user-${newUser.id}`);
+            if (newUserDiv) {
+                newUserDiv.classList.add('new-user');
+            }
+        } catch (error) {
+            showMessage(error.message || 'Username or Name or Email already exists', true);
+        }
+    }
+
+    async function editUser(id) {
+        try {
+            const response = await fetch(`/users/${id}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => {
+                    throw new Error('Failed to fetch user');
+                });
+                throw new Error(errorData.message || 'Failed to fetch user');
+            }
+            const user = await response.json();
+
+            const userDiv = document.getElementById(`user-${id}`);
+            userDiv.innerHTML = `
+                <form id="edit-form-${id}" class="edit-user-form">
+                    Username: <input type="text" name="username" value="${user.username}" required>
+                    Name: <input type="text" name="name" value="${user.name}" required>
+                    Email: <input type="email" name="email" value="${user.email}" required>
+                    <button type="submit" class="save-btn">Save</button>
+                    <button type="button" class="cancel-btn" id="cancel-edit-${id}">Cancel</button>
+                </form>
+            `;
+
+            document.getElementById(`edit-form-${id}`).addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await updateUser(id, e.target);
+            });
+
+            document.getElementById(`cancel-edit-${id}`).addEventListener('click', () => fetchUsers());
+        } catch (error) {
+            showMessage(error.message || 'Failed to fetch user', true);
+        }
+    }
+
+    async function updateUser(id, form) {
+        try {
+            const updatedUser = {
+                username: form.elements.username.value,
+                name: form.elements.name.value,
+                email: form.elements.email.value
+            };
+
+            const response = await fetch(`/users/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedUser)
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => {
+                    throw new Error('Username or Name or Email already exists');
+                });
+                const errorMessage = typeof data.message === 'string' ? data.message : 'Username or Name or Email already exists';
+                if (errorMessage.includes("Username already exists") ||
+                    errorMessage.includes("Email already exists") ||
+                    errorMessage.includes("Name already exists")) {
+                    throw new Error('Username or Name or Email already exists');
+                } else {
+                    throw new Error(errorMessage);
+                }
+            }
+
+            showMessage('User updated successfully');
+            await fetchUsers();
+        } catch (error) {
+            showMessage(error.message || 'Username or Name or Email already exists', true);
+        }
+    }
+
+    async function deleteUser(id) {
+        if (!confirm('Are you sure you want to delete this user?')) return;
+
+        try {
+            const response = await fetch(`/users/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => {
+                    throw new Error('Failed to delete user');
+                });
+                throw new Error(data.message || 'Failed to delete user');
+            }
+
+            showMessage('User deleted successfully');
+            await fetchUsers();
+        } catch (error) {
+            showMessage(error.message || 'Failed to delete user', true);
+        }
+    }
+
+    document.getElementById('create-user-form').addEventListener('submit', createUser);
+    fetchUsers();
+</script>
+</body>
+</html>
